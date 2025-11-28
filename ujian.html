@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ujian Online - Mode Aman</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none; /* Mencegah blok teks */
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            width: 400px;
+            text-align: center;
+        }
+        .hidden { display: none; }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        .btn:hover { background-color: #0056b3; }
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #eee;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            text-align: left;
+        }
+        .option-btn:hover { background-color: #ddd; }
+        .warning { color: red; font-weight: bold; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="startScreen">
+        <h2>Ujian Komputer Dasar</h2>
+        <p>Waktu: Tidak terbatas</p>
+        <div class="warning">⚠️ PERINGATAN:</div>
+        <p style="font-size: 14px; color: #555;">
+            Dilarang pindah tab, minimize browser, atau keluar dari mode layar penuh. 
+            Pelanggaran akan otomatis membatalkan ujian.
+        </p>
+        <button class="btn" onclick="mulaiUjian()">Mulai Ujian (Fullscreen)</button>
+    </div>
+
+    <div class="container hidden" id="quizScreen">
+        <h3 id="question-text">Soal akan muncul di sini</h3>
+        <div id="answer-buttons">
+            </div>
+        <p style="font-size: 12px; margin-top: 20px; color: gray;">Soal <span id="current-question">1</span> dari 5</p>
+    </div>
+
+    <div class="container hidden" id="resultScreen">
+        <h2>Ujian Selesai</h2>
+        <p>Skor Anda:</p>
+        <h1 id="score" style="font-size: 50px; color: #007bff;">0</h1>
+        <p id="status-msg"></p>
+        <button class="btn" onclick="location.reload()">Coba Lagi</button>
+    </div>
+
+    <script>
+        // --- DATA SOAL (Bisa diedit) ---
+        const questions = [
+            {
+                text: "Apa kepanjangan dari CPU?",
+                options: ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Control Panel Unit"],
+                correct: 0 // Kunci jawaban (indeks mulai dari 0)
+            },
+            {
+                text: "Mana yang termasuk perangkat lunak (software)?",
+                options: ["Monitor", "Windows 10", "Keyboard", "Mouse"],
+                correct: 1
+            },
+            {
+                text: "Tombol pintas untuk menyalin (Copy) adalah...",
+                options: ["Ctrl + V", "Ctrl + X", "Ctrl + C", "Ctrl + P"],
+                correct: 2
+            },
+            {
+                text: "Platform untuk menyimpan kode secara online adalah...",
+                options: ["Facebook", "GitHub", "Instagram", "Photoshop"],
+                correct: 1
+            },
+            {
+                text: "Apa warna logo HTML5?",
+                options: ["Biru", "Hijau", "Merah/Oranye", "Kuning"],
+                correct: 2
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isExamActive = false;
+
+        // --- FUNGSI UTAMA ---
+
+        function mulaiUjian() {
+            // 1. Masuk Fullscreen
+            document.documentElement.requestFullscreen().catch((e) => {
+                console.log(e);
+            });
+
+            isExamActive = true;
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('quizScreen').classList.remove('hidden');
+            tampilkanSoal();
+        }
+
+        function tampilkanSoal() {
+            const question = questions[currentQuestionIndex];
+            document.getElementById('question-text').innerText = question.text;
+            document.getElementById('current-question').innerText = currentQuestionIndex + 1;
+
+            const buttonsDiv = document.getElementById('answer-buttons');
+            buttonsDiv.innerHTML = ''; // Hapus tombol lama
+
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.innerText = option;
+                button.classList.add('option-btn');
+                button.onclick = () => pilihJawaban(index);
+                buttonsDiv.appendChild(button);
+            });
+        }
+
+        function pilihJawaban(selectedIndex) {
+            if (selectedIndex === questions[currentQuestionIndex].correct) {
+                score += 20; // 5 soal x 20 = 100
+            }
+
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                tampilkanSoal();
+            } else {
+                selesaiUjian("Selamat, Anda telah menyelesaikan ujian!");
+            }
+        }
+
+        function selesaiUjian(pesan) {
+            isExamActive = false;
+            // Keluar fullscreen
+            if (document.exitFullscreen) { document.exitFullscreen(); }
+
+            document.getElementById('quizScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('score').innerText = score;
+            document.getElementById('status-msg').innerText = pesan;
+        }
+
+        // --- SISTEM KEAMANAN (ANTI CURANG) ---
+
+        // 1. Deteksi Pindah Tab / Minimize
+        document.addEventListener("visibilitychange", function() {
+            if (document.hidden && isExamActive) {
+                alert("⚠️ PELANGGARAN TERDETEKSI!\nAnda mencoba membuka tab lain atau aplikasi lain.");
+                score = 0; // Hukuman nilai jadi 0
+                selesaiUjian("DISKUALIFIKASI: Anda terdeteksi keluar dari aplikasi ujian.");
+            }
+        });
+
+        // 2. Blokir Klik Kanan (Context Menu)
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // 3. Blokir Tombol Copy/Inspect (F12, Ctrl+C, dll)
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) { return false; } // Blok F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Blok Inspect
+            if(e.ctrlKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Blok Copy
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Blok View Source
+        }
+
+    </script>
+</body>
+</html>
